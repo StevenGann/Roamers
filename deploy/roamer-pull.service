@@ -1,0 +1,10 @@
+[Unit]
+Description=Roamer-1 pull-based deploy (git pull + restart roamerd on change)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/roamers/deploy/pull-and-deploy.sh
+# Run as a non-root user if one is provisioned; adjust User= to match.
+User=root

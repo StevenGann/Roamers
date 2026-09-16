@@ -1,0 +1,10 @@
+[Unit]
+Description=Roamer-1 pull-and-deploy every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=roamer-pull.service
+
+[Install]
+WantedBy=timers.target
