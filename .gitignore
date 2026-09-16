@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Pico SDK / CMake
+build/
+cmake-build-*/
+
+# OS
+.DS_Store
+
+# Local config (secrets, per-device)
+roamerd/config.local.toml
+*.local.toml
+
+# Firmware build artifacts
+*.uf2
+*.elf
+*.bin
