@@ -37,9 +37,12 @@ def _open(dev):
     import cv2
     cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
     if cap.isOpened():
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # These Alcor Micro cams are YUYV-only (no MJPG) at 30 fps. 4× 640×480
+        # uncompressed saturates USB 2.0 bandwidth → only 2 would capture. 320×240
+        # keeps 4 simultaneous streams within budget (18 MB/s total).
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"YUYV"))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     return cap
 

@@ -25,10 +25,12 @@ _bins = np.full(360, np.nan)   # distance (m) per 1° bin
 
 
 def _parse_packet(pkt):
-    if len(pkt) != 47 or pkt[0] != 0x54:
+    if len(pkt) != 47 or pkt[0] != 0x54 or pkt[1] != 0x2C:
         return None
     start = (pkt[4] | (pkt[5] << 8)) / 100.0
-    end = (pkt[38] | (pkt[39] << 8)) / 100.0
+    end = (pkt[42] | (pkt[43] << 8)) / 100.0   # end angle is at offset 42-43, NOT 38
+    if end < start:
+        end += 360.0  # angle wraps across 0°/360°
     step = (end - start) / 11.0
     pts = []
     for i in range(12):
