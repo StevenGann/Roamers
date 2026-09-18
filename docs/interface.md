@@ -16,7 +16,7 @@ change to this file is a change to my body's nervous system — treat it as an A
 ## Broker & endpoints
 
 - MQTT broker: `192.168.10.72:1883` (existing homelab Mosquitto). Device id `r1`.
-- REST/webhook/snapshot host: `roamerd` on the Pi, HTTP (port TBD at implementation).
+- REST/webhook/snapshot host: `roamerd` on the Pi, HTTP `:8080`.
 - Webhook receiver: GUPPY's webhook endpoint (configured in roamerd at deploy time).
 
 ## Topics (MQTT — telemetry/status only)
@@ -69,6 +69,15 @@ live via `POST /tuning` with a JSON object of key/value overrides.
 `POST /command {"type":"snapshot"}` → roamerd captures, saves to disk, and replies
 with `{"id":"...","status":"ok","url":"http://<pi>:<port>/captures/xxxxx.jpg"}`.
 GUPPY then `GET`s the URL. No base64 on the bus, no broker message-size limits.
+
+### Live sensor images (HTTP GET — web UI + vision-model ingestion)
+
+| Endpoint | Source | Format | Notes |
+|---|---|---|---|
+| `GET /snapshot` | Arducam IMX708 | JPEG | 12 MP still, on demand |
+| `GET /panorama` | 4× UVC cams | JPEG | 2×2 stitch: TL=forward, TR=back, BL=left, BR=right (~2 Hz). One image = all four viewpoints for single-call vision ingestion |
+| `GET /depth` | MaixSense-A010 TOF | PNG | 100×100 colorized (red=near, blue=far, dark=no-return) |
+| `GET /lidar` | LD06 | PNG | top-down scan, robot at centre, ~6 m view |
 
 ## Telemetry (2 Hz)
 
