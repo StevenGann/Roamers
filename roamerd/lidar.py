@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""roamerd lidar — LD06 2D LIDAR top-down visualization."""
+"""roamerd lidar — LD06 2D LIDAR top-down visualization (radar-style)."""
 import io
 import logging
 import math
@@ -7,7 +7,7 @@ import threading
 import time
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from . import devices
 
@@ -24,11 +24,22 @@ _stop = threading.Event()
 _bins = np.full(360, np.nan)   # distance (m) per 1° bin
 
 
+def _font(size=11):
+    for p in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+              "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"):
+        try:
+            return ImageFont.truetype(p, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
 def _parse_packet(pkt):
     if len(pkt) != 47 or pkt[0] != 0x54 or pkt[1] != 0x2C:
         return None
     start = (pkt[4] | (pkt[5] << 8)) / 100.0
-    end = (pkt[42] | (pkt[43] << 8)) / 100.0   # end angle is at offset 42-43, NOT 38
+    end = (pkt[42] | (pkt[43] << 8)) / 100.0   # end angle at offset 42-43, NOT 38
     if end < start:
         end += 360.0  # angle wraps across 0°/360°
     step = (end - start) / 11.0
@@ -45,7 +56,8 @@ def _parse_packet(pkt):
 def _render():
     img = np.zeros((SIZE, SIZE, 3), dtype=np.uint8)
     img[:] = (12, 14, 20)
-    cx = cy = SIZE / 2.0
+    cx = cy = SIZE // 2
+    # scan points (0° = up = forward)
     for a_deg in range(360):
         d = _bins[a_deg]
         if not np.isfinite(d) or d <= 0:
@@ -56,14 +68,31 @@ def _render():
         if 0 <= px < SIZE and 0 <= py < SIZE:
             t = min(max(d / MAX_RANGE_M, 0.0), 1.0)
             img[int(py), int(px)] = (int(255 * (1 - t)), int(110 * (1 - t)), int(40 + 215 * t))
-    # robot marker (white 5×5)
-    for dy in range(-2, 3):
-        for dx in range(-2, 3):
-            x, y = int(cx + dx), int(cy + dy)
-            if 0 <= x < SIZE and 0 <= y < SIZE:
-                img[y, x] = (255, 255, 255)
+    # --- radar overlay ---
+    pil = Image.fromarray(img, "RGB")
+    draw = ImageDraw.Draw(pil)
+    font = _font(11)
+    grid = (58, 70, 92)      # faint blue-gray
+    fwd = (0, 190, 255)      # cyan forward accent
+    lab = (110, 122, 140)    # distance-label gray
+    # range rings every 1 m
+    for m in range(1, 6):
+        rpx = int(m * SCALE)
+        if rpx < SIZE // 2:
+            draw.ellipse([cx - rpx, cy - rpx, cx + rpx, cy + rpx], outline=grid, width=1)
+    # crosshair N/S/E/W
+    draw.line([(cx, 0), (cx, SIZE)], fill=grid, width=1)
+    draw.line([(0, cy), (SIZE, cy)], fill=grid, width=1)
+    # forward arrow (up) + label
+    draw.polygon([(cx - 6, 22), (cx + 6, 22), (cx, 6)], fill=fwd)
+    draw.text((cx + 10, 8), "FWD", fill=fwd, font=font, stroke_width=1, stroke_fill=(0, 0, 0))
+    # distance labels along the forward axis
+    for m in range(1, 6):
+        draw.text((cx + 4, cy - m * SCALE + 2), f"{m}m", fill=lab, font=font)
+    # robot marker (white square) on top
+    draw.rectangle([cx - 2.5, cy - 2.5, cx + 2.5, cy + 2.5], fill=(255, 255, 255))
     buf = io.BytesIO()
-    Image.fromarray(img, "RGB").save(buf, "PNG")
+    pil.save(buf, "PNG")
     return buf.getvalue()
 
 
