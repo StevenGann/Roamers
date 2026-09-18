@@ -52,7 +52,7 @@ def _publisher():
     while True:
         try:
             snap = core.control_snapshot()
-            t = dict(core._last_telemetry)
+            t = core.telemetry()
             t["ts"] = int(time.time())
             t["estop"] = snap["estop"]
             c.publish(f"roamer/{core.DEVICE_ID}/telemetry", json.dumps(t), qos=0)

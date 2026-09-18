@@ -7,6 +7,7 @@ import threading
 
 from . import core
 from . import depth
+from . import drivetrain
 from . import lidar
 from . import mqtt
 from . import panorama
@@ -34,10 +35,11 @@ def main():
     # warm the camera in the background (non-blocking)
     threading.Thread(target=snapshot._cam, daemon=True, name="camera-warm").start()
 
-    # sensor streams (each runs its own thread; failures are logged, not fatal)
+    # sensor streams + drivetrain (each runs its own thread; failures are logged, not fatal)
     depth.start()
     panorama.start()
     lidar.start()
+    drivetrain.start()
 
     mqtt.start()
     web.start()  # blocks

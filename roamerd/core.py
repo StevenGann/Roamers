@@ -8,6 +8,8 @@ import threading
 import time
 from pathlib import Path
 
+from . import drivetrain
+
 # --- config ---
 DEVICE_ID = "r1"
 NAME = "roamer-01"
@@ -70,11 +72,40 @@ def _now():
     return int(time.time())
 
 
+def _battery_percent(mv):
+    lo, hi = 9000.0, 12600.0  # 3S LiPo-ish: 9.0V = 0%, 12.6V = 100%
+    if mv <= lo:
+        return 0
+    if mv >= hi:
+        return 100
+    return int(round((mv - lo) / (hi - lo) * 100))
+
+
+def telemetry():
+    """Merge live drivetrain state into the telemetry payload."""
+    d = drivetrain.snapshot()
+    t = json.loads(json.dumps(_last_telemetry))
+    t["battery"]["voltage"] = round(d["batt_mv"] / 1000.0, 2)
+    t["battery"]["current_a"] = round(d["batt_ma"] / 1000.0, 2)
+    t["battery"]["percent"] = _battery_percent(d["batt_mv"])
+    t["bumpers"]["left"] = d["bump_l"]
+    t["bumpers"]["right"] = d["bump_r"]
+    t["cliffs"]["fl"] = d["cliff_fl"]
+    t["cliffs"]["fr"] = d["cliff_fr"]
+    t["cliffs"]["bl"] = d["cliff_bl"]
+    t["cliffs"]["br"] = d["cliff_br"]
+    t["wheel_drop"]["left"] = d["wheel_l"]
+    t["wheel_drop"]["right"] = d["wheel_r"]
+    t["estop"] = d["estop"] or t["estop"]
+    t["imu"]["picked_up"] = d["picked_up"]
+    t["drivetrain"] = {"connected": d["connected"], "vel_l_cm_s": d["vel_l"],
+                       "vel_r_cm_s": d["vel_r"], "enc_l": d["enc_l"], "enc_r": d["enc_r"]}
+    return t
+
+
 def control_snapshot():
     with _state_lock:
-        s = dict(state)
-        s["since"] = s["since"]
-        return s
+        return dict(state)
 
 
 def request_control(agent, reason="", ttl_s=300.0):
@@ -121,12 +152,16 @@ def set_estop(on=True):
         state["estop"] = on
         if on:
             state["active_behavior"] = None
-        log.warning("ESTOP %s", "LATCHED" if on else "cleared")
-        return {"ok": True, "estop": on}
+    if on:
+        drivetrain.estop()
+    else:
+        drivetrain.reset()
+    log.warning("ESTOP %s", "LATCHED" if on else "cleared")
+    return {"ok": True, "estop": on}
 
 
 def handle_command(cmd):
-    """Goal commands. Motion returns 'no drivetrain' until H-bridge is assembled."""
+    """Goal commands, translated to drivetrain/Pico actions."""
     t = cmd.get("type")
     log.info("command received: %s", json.dumps(cmd, default=str))
     if state["estop"] and t not in ("reset", "estop"):
@@ -135,8 +170,16 @@ def handle_command(cmd):
         return set_estop(True)
     if t == "reset":
         return set_estop(False)
-    if t in ("drive", "rotate", "drive_arc", "stop", "look_at", "grab", "release", "scan"):
-        return {"status": "ok", "note": "no drivetrain/actuators yet (pending hardware)"}
+    if t == "drive":
+        return drivetrain.drive_for(cmd.get("distance_cm", 0), cmd.get("speed_cm_s", 20))
+    if t == "rotate":
+        return drivetrain.rotate_for(cmd.get("degrees", 90), cmd.get("direction", "cw"),
+                                     cmd.get("speed_cm_s", 15.0))
+    if t == "stop":
+        drivetrain.stop()
+        return {"status": "ok"}
+    if t in ("drive_arc", "look_at", "grab", "release", "scan"):
+        return {"status": "ok", "note": "not yet implemented (arc/servos pending hardware)"}
     if t == "snapshot":
         return {"status": "ok", "url": f"http://{NAME}.local:{WEB_PORT}/snapshot"}
     return {"status": "error", "error": "unknown command type: " + str(t)}

@@ -53,7 +53,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json({"owner": s["owner"], "mode": s["mode"],
                                     "held": s["held"], "estop": s["estop"],
                                     "active_behavior": s["active_behavior"],
-                                    "telemetry": core._last_telemetry})
+                                    "telemetry": core.telemetry()})
         if self.path == "/health":
             return self._send_json({"ok": True, "id": core.DEVICE_ID, "name": core.NAME})
         if self.path.startswith("/snapshot"):
