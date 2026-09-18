@@ -63,8 +63,11 @@ def _handle(frame):
     if side * side != payload or side < 1:
         return
     img = np.frombuffer(frame[4 + 16:4 + 16 + payload], dtype=np.uint8).reshape(side, side)
+    png = _to_png(render(img))
+    if _latest is None:
+        log.info("depth: first frame %dx%d", side, side)
     with _lock:
-        _latest = _to_png(render(img))
+        _latest = png
 
 
 def run():

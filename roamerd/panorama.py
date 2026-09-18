@@ -46,6 +46,7 @@ def _open(dev):
 
 def run():
     import cv2
+    global _latest
     caps = []
     for dev, role in CAMERAS:
         cap = _open(dev)
@@ -74,8 +75,11 @@ def run():
             img = Image.fromarray(canvas, "RGB")
             buf = io.BytesIO()
             img.save(buf, "JPEG", quality=82)
+            jpeg = buf.getvalue()
+            if _latest is None:
+                log.info("panorama: first frame (%d bytes)", len(jpeg))
             with _lock:
-                _latest = buf.getvalue()
+                _latest = jpeg
             time.sleep(1.0 / FPS)
     except Exception as e:
         log.warning("panorama error: %s", e)

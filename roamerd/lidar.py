@@ -66,6 +66,7 @@ def _render():
 
 def run():
     import serial
+    global _latest
     while not _stop.is_set():
         try:
             ser = serial.Serial(DEV, BAUD, timeout=0.5)
@@ -87,8 +88,11 @@ def run():
                 now = time.time()
                 if now - last > 0.15:
                     last = now
+                    png = _render()
+                    if _latest is None:
+                        log.info("lidar: first frame (%d bytes)", len(png))
                     with _lock:
-                        _latest = _render()
+                        _latest = png
         except serial.SerialException as e:
             log.warning("lidar serial error: %s", e)
         except Exception as e:
