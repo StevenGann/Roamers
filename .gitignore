@@ -15,6 +15,7 @@ cmake-build-*/
 # Local config (secrets, per-device)
 roamerd/config.local.toml
 *.local.toml
+roamerd/.mqtt-secrets
 
 # Firmware build artifacts
 *.uf2

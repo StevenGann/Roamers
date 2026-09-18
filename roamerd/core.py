@@ -13,6 +13,16 @@ DEVICE_ID = "r1"
 NAME = "roamer-01"
 BROKER_HOST = "192.168.10.72"
 BROKER_PORT = 1883
+# Credentials come from a gitignored secrets file (this repo is public).
+_secrets = {}
+_secrets_path = Path(__file__).parent / ".mqtt-secrets"
+if _secrets_path.exists():
+    import configparser
+    _cp = configparser.ConfigParser()
+    _cp.read(_secrets_path)
+    _secrets = dict(_cp["mqtt"]) if _cp.has_section("mqtt") else {}
+BROKER_USER = _secrets.get("user", os.environ.get("ROAMER_MQTT_USER", ""))
+BROKER_PASS = _secrets.get("password", os.environ.get("ROAMER_MQTT_PASS", ""))
 WEB_HOST = "0.0.0.0"
 WEB_PORT = 8080
 TELEMETRY_HZ = 2.0

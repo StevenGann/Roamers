@@ -19,6 +19,7 @@ except ImportError:
 
 def _base(client_id=core.DEVICE_ID):
     c = mqtt.Client(client_id=client_id)
+    c.username_pw_set(core.BROKER_USER, core.BROKER_PASS)
     c.will_set(f"roamer/{core.DEVICE_ID}/status",
                json.dumps({"online": False, "id": core.DEVICE_ID}),
                qos=1, retain=True)
