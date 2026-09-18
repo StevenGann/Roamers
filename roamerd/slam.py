@@ -114,11 +114,20 @@ class GridMap:
             self.logodds[cy, cx] = min(max(self.logodds[cy, cx] + val, L_MIN), L_MAX)
 
     def _raycast(self, x0, y0, x1, y1):
-        dist = math.hypot(x1 - x0, y1 - y0)
+        dx, dy = x1 - x0, y1 - y0
+        dist = math.hypot(dx, dy)
+        if dist < 1e-6:
+            return
+        nx, ny = -dy / dist, dx / dist   # perpendicular unit vector (beam width)
+        off = RES * 0.7
         steps = max(int(dist / (RES * 0.5)), 1)
         for s in range(steps):
             t = s / steps
-            self._mark(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, L_FREE)
+            px = x0 + dx * t
+            py = y0 + dy * t
+            self._mark(px, py, L_FREE)
+            self._mark(px + nx * off, py + ny * off, L_FREE)
+            self._mark(px - nx * off, py - ny * off, L_FREE)
         self._mark(x1, y1, L_OCC)
 
     def update(self, pose, pts_robot):
