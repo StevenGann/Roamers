@@ -58,11 +58,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json({"ok": True, "id": core.DEVICE_ID, "name": core.NAME})
         if self.path.startswith("/snapshot"):
             return self._serve_bytes(snap.capture(), "image/jpeg")
-        if self.path == "/depth":
+        if self.path.startswith("/depth"):
             return self._serve_bytes(depth.get_frame(), "image/png")
-        if self.path == "/panorama":
+        if self.path.startswith("/panorama"):
             return self._serve_bytes(panorama.get_frame(), "image/jpeg")
-        if self.path == "/lidar":
+        if self.path.startswith("/lidar"):
             return self._serve_bytes(lidar.get_frame(), "image/png")
         return self._send_json({"error": "not found"}, 404)
 
