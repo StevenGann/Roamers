@@ -1,0 +1,16 @@
+[Unit]
+Description=Roamer-01 mid-loop (roamerd)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=guppy
+WorkingDirectory=/opt/roamers
+ExecStart=/opt/roamers/.venv/bin/python -m roamerd
+Restart=always
+RestartSec=3
+# real-time-ish scheduling not required for mid-loop; keep defaults
+
+[Install]
+WantedBy=multi-user.target

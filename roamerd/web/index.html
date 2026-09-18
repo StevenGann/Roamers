@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>roamer-01 — GUPPY's body</title>
+<style>
+  :root { --navy:#16213e; --teal:#0f4c5c; --lt:#3d8fa8; --amber:#d97706; --bg:#0b1220; --card:#141d2f; --fg:#dbe4f0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  header { background:var(--navy); padding:16px 24px; display:flex; align-items:center; gap:16px; border-bottom:2px solid var(--teal); }
+  header h1 { margin:0; font-size:1.3rem; }
+  header .sub { color:var(--lt); font-size:.85rem; }
+  .badge { padding:3px 10px; border-radius:12px; font-size:.8rem; font-weight:600; }
+  .ok { background:#0f3; color:#002; } .warn { background:var(--amber); color:#000; } .idle { background:#333; color:#ccc; }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px 24px; max-width:1100px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid #22304a; border-radius:10px; padding:16px; }
+  .card h2 { margin:0 0 10px; font-size:1rem; color:var(--lt); text-transform:uppercase; letter-spacing:.05em; }
+  .row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #1c2840; font-size:.92rem; }
+  .row:last-child { border-bottom:0; }
+  .k { color:#7d8ca3; } .v { font-weight:600; }
+  .controls { grid-column:1 / -1; }
+  .btnrow { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+  button { background:var(--teal); color:var(--fg); border:0; border-radius:8px; padding:10px 16px; font-size:.9rem; cursor:pointer; }
+  button:hover { background:var(--lt); }
+  button.danger { background:#8b1a1a; } button.danger:hover { background:#b32424; }
+  button.amber { background:var(--amber); color:#000; }
+  #log { grid-column:1 / -1; font-family:ui-monospace,monospace; font-size:.8rem; max-height:220px; overflow-y:auto; white-space:pre-wrap; }
+  .l-t { color:#7d8ca3; } .l-i { color:#4ad; } .l-w { color:var(--amber); }
+  #snap { width:100%; border-radius:8px; border:1px solid #22304a; min-height:120px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>roamer-01</h1>
+  <span class="sub">GUPPY's body · device <code>r1</code></span>
+  <span id="estop-badge" class="badge idle">—</span>
+  <span id="lease-badge" class="badge idle">idle</span>
+</header>
+<main>
+  <div class="card">
+    <h2>Control</h2>
+    <div class="row"><span class="k">Owner</span><span class="v" id="c-owner">—</span></div>
+    <div class="row"><span class="k">Mode</span><span class="v" id="c-mode">—</span></div>
+    <div class="row"><span class="k">Behavior</span><span class="v" id="c-behavior">—</span></div>
+    <div class="row"><span class="k">Drivetrain</span><span class="v" id="c-drive">pending</span></div>
+    <div class="btnrow">
+      <button onclick="req()">Request control</button>
+      <button onclick="rel()">Release</button>
+      <button class="amber" onclick="ovr()">Admin override</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Telemetry</h2>
+    <div class="row"><span class="k">Battery</span><span class="v" id="t-batt">12.0 V</span></div>
+    <div class="row"><span class="k">Heading</span><span class="v" id="t-head">0.0°</span></div>
+    <div class="row"><span class="k">Picked up</span><span class="v" id="t-pick">false</span></div>
+    <div class="row"><span class="k">Bumpers</span><span class="v" id="t-bump">clear</span></div>
+  </div>
+  <div class="card controls">
+    <h2>Drive controls</h2>
+    <div class="btnrow">
+      <button onclick="cmd('drive',{distance_cm:20})">Fwd 20cm</button>
+      <button onclick="cmd('rotate',{degrees:90,direction:'cw'})">Turn 90°</button>
+      <button onclick="cmd('stop')">Stop</button>
+      <button onclick="cmd('look_at',{pan_deg:0,tilt_deg:-20})">Look</button>
+      <button onclick="cmd('snapshot')">Snapshot</button>
+      <button class="danger" onclick="cmd('estop')">E-STOP</button>
+      <button onclick="cmd('reset')">Reset</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Camera</h2>
+    <img id="snap" alt="snapshot" src="/snapshot">
+    <div class="btnrow"><button onclick="snap()">Refresh</button></div>
+  </div>
+  <div class="card" id="log"><h2>Log</h2></div>
+</main>
+<script>
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
+  return r.json();
+}
+function logLine(msg, cls='l-i') { const d=document.getElementById('log'); const s=document.createElement('span'); s.className=cls; s.textContent=new Date().toLocaleTimeString()+' '+msg+'\n'; d.appendChild(s); d.scrollTop=d.scrollHeight; }
+async function cmd(type, extra={}) { const r = await api('/command', {type, ...extra}); logLine(JSON.stringify(r)); }
+async function req(){ logLine(JSON.stringify(await api('/control/request',{agent:'guppy',reason:'web'}))); }
+async function rel(){ logLine(JSON.stringify(await api('/control/release',{agent:'guppy'}))); }
+async function ovr(){ logLine(JSON.stringify(await api('/control/override',{agent:'sydney'}))); }
+async function snap(){ document.getElementById('snap').src='/snapshot?t='+Date.now(); }
+async function poll() {
+  try {
+    const s = await api('/state');
+    document.getElementById('c-owner').textContent = s.owner || '—';
+    document.getElementById('c-mode').textContent = s.mode;
+    document.getElementById('c-behavior').textContent = s.active_behavior || '—';
+    const eb = document.getElementById('estop-badge');
+    eb.textContent = s.estop ? 'E-STOP' : 'RUN'; eb.className = 'badge ' + (s.estop?'warn':'ok');
+    const lb = document.getElementById('lease-badge');
+    lb.textContent = s.held ? ('held: '+s.owner) : 'idle'; lb.className = 'badge ' + (s.held?'ok':'idle');
+    const t = s.telemetry || {};
+    document.getElementById('t-batt').textContent = (t.battery||{}).voltage + ' V';
+    document.getElementById('t-head').textContent = ((t.imu||{}).heading_deg||0) + '°';
+    document.getElementById('t-pick').textContent = ((t.imu||{}).picked_up||false);
+    const b = t.bumpers||{};
+    document.getElementById('t-bump').textContent = (b.left||b.right)?'BUMP':'clear';
+  } catch(e){ logLine('poll error: '+e, 'l-w'); }
+}
+setInterval(poll, 1000); poll();
+</script>
+</body>
+</html>
