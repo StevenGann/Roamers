@@ -8,9 +8,10 @@ import time
 import numpy as np
 from PIL import Image
 
+from . import devices
+
 log = logging.getLogger("roamerd.depth")
 
-DEV = "/dev/ttyUSB1"   # FT2232D channel A — AT commands + USB depth stream
 BAUD = 115200
 
 _latest = None          # PNG bytes
@@ -72,13 +73,25 @@ def _handle(frame):
 
 def run():
     import serial
+    dev = devices.resolve()["depth_at"]
+    if not dev:
+        log.warning("depth: MaixSense-A010 not found on USB")
+        return
     while not _stop.is_set():
         try:
-            ser = serial.Serial(DEV, BAUD, timeout=1.0)
-            ser.write(b"AT+DISP=6\r")
-            time.sleep(0.25)
+            ser = serial.Serial(dev, BAUD, timeout=1.0)
+
+            def at(cmd):
+                ser.reset_input_buffer()
+                ser.write(cmd.encode() + b"\r")
+                time.sleep(0.3)
+                ser.read(500)  # drain reply
+
+            at("AT+BINN=1")   # 100×100
+            at("AT+DISP=6")   # USB + UART streaming
+            at("AT+FPS=10")
             ser.reset_input_buffer()
-            log.info("depth cam streaming on %s (DISP=6)", DEV)
+            log.info("depth cam streaming on %s (DISP=6)", dev)
             buf = bytearray()
             while not _stop.is_set():
                 buf.extend(ser.read(4096))

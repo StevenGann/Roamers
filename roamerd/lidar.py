@@ -9,9 +9,10 @@ import time
 import numpy as np
 from PIL import Image
 
+from . import devices
+
 log = logging.getLogger("roamerd.lidar")
 
-DEV = "/dev/ttyUSB0"   # LD06 via CP2102
 BAUD = 230400
 SIZE = 480             # px (square)
 SCALE = 80.0           # px per metre → ~6 m view
@@ -67,10 +68,14 @@ def _render():
 def run():
     import serial
     global _latest
+    dev = devices.resolve()["lidar"]
+    if not dev:
+        log.warning("lidar: LD06 not found on USB")
+        return
     while not _stop.is_set():
         try:
-            ser = serial.Serial(DEV, BAUD, timeout=0.5)
-            log.info("lidar on %s @ %d", DEV, BAUD)
+            ser = serial.Serial(dev, BAUD, timeout=0.5)
+            log.info("lidar on %s @ %d", dev, BAUD)
             buf = bytearray()
             last = 0.0
             while not _stop.is_set():
