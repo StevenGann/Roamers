@@ -144,3 +144,8 @@ def start():
 def get_frame():
     with _lock:
         return _latest
+
+
+def get_scan():
+    """Latest 360-bin distance array (metres; NaN = no return). Copy so callers may mutate."""
+    return _bins.copy()

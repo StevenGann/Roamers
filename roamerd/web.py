@@ -9,6 +9,7 @@ from . import core
 from . import depth
 from . import lidar
 from . import panorama
+from . import slam
 from . import snapshot as snap
 
 log = logging.getLogger("roamerd.web")
@@ -64,6 +65,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_bytes(panorama.get_frame(), "image/jpeg")
         if self.path.startswith("/lidar"):
             return self._serve_bytes(lidar.get_frame(), "image/png")
+        if self.path.startswith("/slam"):
+            return self._serve_bytes(slam.get_map(), "image/png")
+        if self.path == "/pose":
+            return self._send_json({"pose": slam.get_pose().tolist()})
         return self._send_json({"error": "not found"}, 404)
 
     def do_POST(self):

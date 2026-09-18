@@ -11,6 +11,7 @@ from . import drivetrain
 from . import lidar
 from . import mqtt
 from . import panorama
+from . import slam
 from . import snapshot
 from . import web
 
@@ -39,6 +40,7 @@ def main():
     depth.start()
     panorama.start()
     lidar.start()
+    slam.start()
     drivetrain.start()
 
     mqtt.start()
