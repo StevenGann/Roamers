@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """roamerd entrypoint."""
 import logging
+import pathlib
 import sys
 import threading
 
 from . import core
+from . import depth
+from . import lidar
 from . import mqtt
+from . import panorama
 from . import snapshot
 from . import web
 
@@ -13,10 +17,7 @@ from . import web
 def setup_logging():
     fmt = "%(asctime)s %(levelname)-7s %(name)s — %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt,
-                        datefmt="%H:%M:%S",
-                        stream=sys.stdout)
-    # also write to a file so it survives SSH disconnect
-    import pathlib
+                        datefmt="%H:%M:%S", stream=sys.stdout)
     logpath = pathlib.Path("/opt/roamers/roamerd.log")
     logpath.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(str(logpath))
@@ -32,6 +33,11 @@ def main():
 
     # warm the camera in the background (non-blocking)
     threading.Thread(target=snapshot._cam, daemon=True, name="camera-warm").start()
+
+    # sensor streams (each runs its own thread; failures are logged, not fatal)
+    depth.start()
+    panorama.start()
+    lidar.start()
 
     mqtt.start()
     web.start()  # blocks

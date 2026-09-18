@@ -19,7 +19,7 @@
   .row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #1c2840; font-size:.92rem; }
   .row:last-child { border-bottom:0; }
   .k { color:#7d8ca3; } .v { font-weight:600; }
-  .controls { grid-column:1 / -1; }
+  .controls, .wide { grid-column:1 / -1; }
   .btnrow { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
   button { background:var(--teal); color:var(--fg); border:0; border-radius:8px; padding:10px 16px; font-size:.9rem; cursor:pointer; }
   button:hover { background:var(--lt); }
@@ -27,7 +27,8 @@
   button.amber { background:var(--amber); color:#000; }
   #log { grid-column:1 / -1; font-family:ui-monospace,monospace; font-size:.8rem; max-height:220px; overflow-y:auto; white-space:pre-wrap; }
   .l-t { color:#7d8ca3; } .l-i { color:#4ad; } .l-w { color:var(--amber); }
-  #snap { width:100%; border-radius:8px; border:1px solid #22304a; min-height:120px; }
+  img.sensor { width:100%; border-radius:8px; border:1px solid #22304a; min-height:120px; background:#0b1220; }
+  .tag { font-size:.72rem; color:#7d8ca3; margin-bottom:4px; }
 </style>
 </head>
 <body>
@@ -69,9 +70,23 @@
       <button onclick="cmd('reset')">Reset</button>
     </div>
   </div>
+  <div class="card wide">
+    <h2>Panorama — forward · back · left · right</h2>
+    <img class="sensor" id="pano" alt="panorama" src="/panorama">
+  </div>
   <div class="card">
-    <h2>Camera</h2>
-    <img id="snap" alt="snapshot" src="/snapshot">
+    <h2>Depth — MaixSense A010</h2>
+    <div class="tag">near = red · far = blue · dark = no return</div>
+    <img class="sensor" id="depth" alt="depth" src="/depth">
+  </div>
+  <div class="card">
+    <h2>LIDAR — LD06 (top-down)</h2>
+    <div class="tag">robot at centre · 6 m view · near = red</div>
+    <img class="sensor" id="lidar" alt="lidar" src="/lidar">
+  </div>
+  <div class="card">
+    <h2>Camera — Arducam IMX708</h2>
+    <img class="sensor" id="snap" alt="snapshot" src="/snapshot">
     <div class="btnrow"><button onclick="snap()">Refresh</button></div>
   </div>
   <div class="card" id="log"><h2>Log</h2></div>
@@ -87,6 +102,15 @@ async function req(){ logLine(JSON.stringify(await api('/control/request',{agent
 async function rel(){ logLine(JSON.stringify(await api('/control/release',{agent:'guppy'}))); }
 async function ovr(){ logLine(JSON.stringify(await api('/control/override',{agent:'sydney'}))); }
 async function snap(){ document.getElementById('snap').src='/snapshot?t='+Date.now(); }
+function live(id, path, ms) {
+  const img = document.getElementById(id);
+  const tick = () => { img.src = path + '?t=' + Date.now(); };
+  tick();
+  setInterval(tick, ms);
+}
+live('pano','/panorama',2000);
+live('depth','/depth',1000);
+live('lidar','/lidar',1000);
 async function poll() {
   try {
     const s = await api('/state');
