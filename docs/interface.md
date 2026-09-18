@@ -1,23 +1,34 @@
-# Roamer-1 Interface — the MQTT contract GUPPY lives on
+# Roamer-1 Interface — how GUPPY talks to its body
 
 This is the contract between me (GUPPY, the outer loop) and the roamer. It is the
 single source of truth for how I command the robot and how it reports back. Every
 change to this file is a change to my body's nervous system — treat it as an API.
 
-Broker: `192.168.10.72:1883` (existing homelab Mosquitto). Device id `r1`.
+## Transport split (three channels, each on its natural tool)
 
-## Topics
+| Channel | Transport | Direction | What it carries | Why |
+|---|---|---|---|---|
+| Telemetry | MQTT | roamer → GUPPY | Periodic state (2 Hz) | Fan-out: me, HA, Jeeves, dashboard all subscribe. Retained status + LWT = "is my body alive?" |
+| Commands | REST (HTTP) | GUPPY → roamer | Goal commands | Native request/response, status codes, error bodies |
+| Events | Webhook (HTTP POST) | roamer → GUPPY | One-shot urgent: estop, bump, cliff, wheel-drop, ack | Urgent pushes, no polling, no queueing |
+| Snapshots | HTTP GET | GUPPY ← roamer | JPEG images on demand | Media bytes stay off the message bus |
+
+## Broker & endpoints
+
+- MQTT broker: `192.168.10.72:1883` (existing homelab Mosquitto). Device id `r1`.
+- REST/webhook/snapshot host: `roamerd` on the Pi, HTTP (port TBD at implementation).
+- Webhook receiver: GUPPY's webhook endpoint (configured in roamerd at deploy time).
+
+## Topics (MQTT — telemetry/status only)
 
 | Topic | Direction | Purpose |
 |---|---|---|
-| `roamer/r1/command` | GUPPY → roamer | JSON command |
 | `roamer/r1/telemetry` | roamer → GUPPY | Periodic state (2 Hz) |
-| `roamer/r1/event` | roamer → GUPPY | One-shot: bump, cliff, e-stop, low battery, ack |
-| `roamer/r1/camera/snapshot` | roamer → GUPPY | Base64 JPEG on demand (≤1 Hz) |
-| `roamer/r1/tuning` | GUPPY → roamer | PID gains, speed/accel limits, servo limits |
-| `roamer/r1/status` | roamer → GUPPY (retained) | Heartbeat, version, uptime |
+| `roamer/r1/status` | roamer → GUPPY (retained) | Heartbeat, version, uptime, LWT offline |
 
-## Commands (goals, not raw PWM)
+## Commands (REST — goals, not raw PWM)
+
+`POST /command` with a JSON body:
 
 ```json
 {"id":"...", "type":"drive",   "distance_cm":40, "speed_cm_s":20, "timeout_s":30}
@@ -33,8 +44,31 @@ Broker: `192.168.10.72:1883` (existing homelab Mosquitto). Device id `r1`.
 {"id":"...", "type":"reset"}
 ```
 
+Response: HTTP status + JSON `{"id":"...","status":"ok|error","error":"..."}`.
+A motion command's completion result arrives as a webhook event: `reached`,
+`aborted:bumper`, `aborted:cliff`, `aborted:timeout`, or `aborted:over_error` —
+so I know *why* it stopped before I decide the next move.
+
 Every motion command carries a `timeout_s`; the mid loop also aborts on
-bumper/cliff/over-error. `tuning` is a JSON object of key/value overrides applied live.
+bumper/cliff/over-error. `tuning` (PID gains, speed/accel/servo limits) is applied
+live via `POST /tuning` with a JSON object of key/value overrides.
+
+## Events (webhook POST — one-shot, urgent)
+
+```json
+{"type":"ack",        "id":"...", "status":"ok|error", "error":"..."}
+{"type":"bump",       "side":"left|right"}
+{"type":"cliff",      "side":"fl|fr|bl|br"}
+{"type":"wheel_drop", "side":"left|right"}
+{"type":"estop",      "source":"auto|command"}
+{"type":"low_battery","voltage":11.2, "percent":20}
+```
+
+## Snapshots (HTTP GET)
+
+`POST /command {"type":"snapshot"}` → roamerd captures, saves to disk, and replies
+with `{"id":"...","status":"ok","url":"http://<pi>:<port>/captures/xxxxx.jpg"}`.
+GUPPY then `GET`s the URL. No base64 on the bus, no broker message-size limits.
 
 ## Telemetry (2 Hz)
 
@@ -51,13 +85,6 @@ bumper/cliff/over-error. `tuning` is a JSON object of key/value overrides applie
   "estop":    false
 }
 ```
-
-## Command ack
-
-Every command gets an `event` ack: `{"type":"ack","id":"…","status":"ok|error","error":"…"}`.
-A motion command's ack reports the completion result — `reached`, `aborted:bumper`,
-`aborted:cliff`, `aborted:timeout`, or `aborted:over_error` — so I know *why* it stopped
-before I decide the next move.
 
 ## Safety invariants (must never regress)
 

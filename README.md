@@ -11,17 +11,22 @@ the mission.
 ## Architecture
 
 ```
-GUPPY (Hermes) ──MQTT──▶ Mosquitto (192.168.10.72:1883) ──▶ roamerd (Pi 5)
-      ▲                                                       │
-      └─────────── telemetry / events / snapshots ◀───────────┘
-                        │ UART/USB (command + telemetry)
-        ┌───────────────┼────────────────┬──────────────┐
-        ▼               ▼                ▼              ▼
-  Pi Pico RP2040    LD06 LIDAR      PCA9685 servos   Cameras (CSI +
-  (H-bridge, encoders,(360° scans)  (pan/tilt+claw)  A010 depth, USB×N)
-   bumpers/cliffs,                     BNO085 IMU,     Rd-03D radar (fixed)
-   wheel-drop)                         INA219)
+GUPPY (Hermes)
+   │  ▲                          ▲
+   │  │ REST /command            │ MQTT telemetry (fan-out to HA/Jeeves/dash)
+   │  └──────────────────────────┘
+   │  ▲  webhook events (estop/bump/cliff/ack) + HTTP snapshots
+   ▼  │
+ roamerd (Pi 5)  ──UART/USB──▶  Pico (H-bridge, encoders, bumpers/cliffs,
+   │                             wheel-drop)  +  LD06 LIDAR, PCA9685 servos,
+   │                             BNO085 IMU, INA219, cameras (CSI IMX708,
+   │                             A010 depth, USB×4)
+   └── MQTT publish → Mosquitto (192.168.10.72:1883)
 ```
+
+Transport split: MQTT for periodic telemetry/status (fan-out, retained, LWT),
+REST for goal commands (native request/response), webhooks for one-shot urgent
+events, HTTP for snapshot images. See `docs/interface.md` for the full contract.
 
 ## Two codebases, two languages, one wire
 
