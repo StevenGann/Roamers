@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 #include "hardware/gpio.h"
+#include "hardware/clocks.h"
 #include <math.h>
 
 static uint _slice[4];
@@ -43,6 +44,8 @@ void motor_init(void) {
         _slice[i] = pwm_gpio_to_slice_num(_pin[i]);
         _chan[i] = pwm_gpio_to_channel(_pin[i]);
         pwm_set_wrap(_slice[i], PWM_WRAP);
+        float div = (float)clock_get_hz(clk_sys) / ((float)PWM_HZ * (float)PWM_WRAP);
+        pwm_set_clkdiv(_slice[i], div);
         pwm_set_chan_level(_slice[i], _chan[i], 0);
         pwm_set_enabled(_slice[i], true);
     }

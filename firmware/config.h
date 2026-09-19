@@ -45,6 +45,7 @@
 
 /* --- control loop --- */
 #define PWM_WRAP         1000        /* PWM resolution 0..1000 */
+#define PWM_HZ           20000       /* PWM carrier — L298N BJT output needs <= ~25 kHz */
 #define LOOP_HZ          100         /* PID / motor tick rate */
 #define TELEM_HZ         20          /* telemetry line rate */
 #define MAX_VELOCITY_CM_S 25.0f      /* feedforward: full duty = this speed */
