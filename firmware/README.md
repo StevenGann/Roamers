@@ -49,9 +49,25 @@ Or hold BOOT while powering, then copy `roamer_pico.uf2` onto the `RP2350` drive
 ## Test (no motors wired)
 
 ```bash
-printf 'PING\n' > /dev/ttyACM0    # → PONG 0.1.0 <ms>
+printf 'PING\n' > /dev/ttyACM0    # → PONG <version> <ms>
 ```
 
-`MV`, `STOP`, `ESTOP`, `RESET` are all safe with no H-bridge attached; encoders read
-0 and the PID drives PWM to 0. `ESTOP` latches (subsequent `MV` → `ERR ESTOP`) until
-`RESET`. Telemetry streams at 20 Hz.
+`MV`, `STOP`, `ESTOP`, `RESET` are all safe with no H-bridge attached. `ESTOP`
+latches (subsequent `MV` → `ERR ESTOP`) until `RESET`. Telemetry streams at 20 Hz.
+
+> The Pi auto-flashes the Pico on boot (`pico-flash.service` → `scripts/pico-flash.sh`),
+> so firmware updates are just "push → reboot".
+
+## No-encoder behaviour (important)
+
+The velocity PID assumes wheel encoders. With **no encoders wired**, `encoder_*()`
+returns 0 forever, so:
+
+- any non-zero `MV` saturates the output to full duty (the P term sees `target−0`),
+  so "3 cm/s" actually means "full speed";
+- a wound-up integral once kept the motors spinning after `STOP` (target→0, but the
+  integral never decayed since error stays 0).
+
+Both are handled in `motor_tick()`: it zeroes the integral when the target is 0, and
+uses anti-windup (only integrates while the output isn't saturated). When the chassis
+gets encoders, tune the PID in `config.h` and this section becomes moot.
