@@ -14,8 +14,8 @@ import time
 log = logging.getLogger("roamerd.servo")
 
 I2C_ADDR = 0x40
-PAN_CH = 14
-TILT_CH = 15
+PAN_CH = 15
+TILT_CH = 14
 ENABLE_GPIO = 4        # PCA9685 OE (active-low)
 FREQ = 50              # servo PWM frequency (Hz)
 MIN_PULSE_MS = 1.0     # pulse width @ 0°
