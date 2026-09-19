@@ -1,0 +1,11 @@
+[Unit]
+Description=Build and flash RP2350 firmware (roamer Pico)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/roamers/scripts/pico-flash.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

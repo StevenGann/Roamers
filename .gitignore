@@ -16,6 +16,7 @@ cmake-build-*/
 roamerd/config.local.toml
 *.local.toml
 roamerd/.mqtt-secrets
+.pico-flash-marker
 
 # Firmware build artifacts
 *.uf2
