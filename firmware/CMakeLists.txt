@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
-include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+if (DEFINED ENV{PICO_SDK_PATH} AND (NOT PICO_SDK_PATH))
+    set(PICO_SDK_PATH $ENV{PICO_SDK_PATH} CACHE PATH "Path to the Pico SDK")
+endif()
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(roamer_pico C CXX ASM)
 set(CMAKE_C_STANDARD 11)

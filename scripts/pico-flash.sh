@@ -24,8 +24,9 @@ for _ in $(seq 1 20); do
     sleep 0.5
 done
 
+export PICO_SDK_PATH="${PICO_SDK_PATH:-/home/guppy/pico-sdk}"
 cd "$BUILD"
-make -j"$(nproc)" >/dev/null 2>&1
+make -j"$(nproc)"
 
 if picotool load -x "$UF2" 2>/dev/null; then
     echo "$SRCVER" > "$MARK"
