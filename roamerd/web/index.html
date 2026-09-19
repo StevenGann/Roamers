@@ -89,6 +89,11 @@
     <img class="sensor" id="snap" alt="snapshot" src="/snapshot">
     <div class="btnrow"><button onclick="snap()">Refresh</button></div>
   </div>
+  <div class="card">
+    <h2>SLAM — occupancy map</h2>
+    <div class="tag" id="slam-pose">pose —</div>
+    <img class="sensor" id="slam" alt="slam" src="/slam">
+  </div>
   <div class="card" id="log"><h2>Log</h2></div>
 </main>
 <script>
@@ -111,6 +116,7 @@ function live(id, path, ms) {
 live('pano','/panorama',2000);
 live('depth','/depth',1000);
 live('lidar','/lidar',1000);
+live('slam','/slam',1000);
 async function poll() {
   try {
     const s = await api('/state');
@@ -127,6 +133,10 @@ async function poll() {
     document.getElementById('t-pick').textContent = ((t.imu||{}).picked_up||false);
     const b = t.bumpers||{};
     document.getElementById('t-bump').textContent = (b.left||b.right)?'BUMP':'clear';
+    try {
+      const p = await api('/pose');
+      document.getElementById('slam-pose').textContent = 'x='+p.pose[0].toFixed(2)+'m  y='+p.pose[1].toFixed(2)+'m  θ='+(p.pose[2]*180/Math.PI).toFixed(1)+'°';
+    } catch(e){}
   } catch(e){ logLine('poll error: '+e, 'l-w'); }
 }
 setInterval(poll, 1000); poll();
