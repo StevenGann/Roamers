@@ -72,10 +72,14 @@ void motor_tick(float dt_s) {
         return;
     }
 
+    /* zero target = stop: clear the integral, since without encoders the
+       velocity error never decays and a wound-up integral keeps the motors
+       spinning after a STOP. */
+    if (_target_l == 0.0f) _integ_l = 0.0f;
+    if (_target_r == 0.0f) _integ_r = 0.0f;
+
     float err_l = _target_l - _vel_l;
     float err_r = _target_r - _vel_r;
-    _integ_l += err_l * dt_s;
-    _integ_r += err_r * dt_s;
     float der_l = (err_l - _prev_err_l) / dt_s;
     float der_r = (err_r - _prev_err_r) / dt_s;
     _prev_err_l = err_l; _prev_err_r = err_r;
@@ -84,6 +88,10 @@ void motor_tick(float dt_s) {
     float ff_r = _target_r / MAX_VELOCITY_CM_S;
     float out_l = ff_l + (PID_KP * err_l + PID_KI * _integ_l + PID_KD * der_l);
     float out_r = ff_r + (PID_KP * err_r + PID_KI * _integ_r + PID_KD * der_r);
+
+    /* anti-windup: only integrate while the output is not saturated */
+    if (out_l < MAX_DUTY && out_l > -MAX_DUTY) _integ_l += err_l * dt_s;
+    if (out_r < MAX_DUTY && out_r > -MAX_DUTY) _integ_r += err_r * dt_s;
 
     _drive(0, out_l);
     _drive(1, out_r);

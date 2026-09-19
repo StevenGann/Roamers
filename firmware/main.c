@@ -14,7 +14,7 @@
 #include "encoder.h"
 #include "sensors.h"
 
-#define VERSION "0.1.1"
+#define VERSION "0.1.2"
 
 static sensors_state_t _sens;
 static bool _picked_up = false;  /* real value comes from the IMU on the Pi */
