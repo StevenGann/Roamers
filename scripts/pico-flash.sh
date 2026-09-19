@@ -28,7 +28,7 @@ export PICO_SDK_PATH="${PICO_SDK_PATH:-/home/guppy/pico-sdk}"
 cd "$BUILD"
 make -j"$(nproc)"
 
-if picotool load -x "$UF2" 2>/dev/null; then
+if picotool load -f -x "$UF2" 2>/dev/null; then
     echo "$SRCVER" > "$MARK"
     echo "pico-flash: flashed $SRCVER"
 else
