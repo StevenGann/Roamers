@@ -12,6 +12,7 @@ from . import lidar
 from . import mqtt
 from . import panorama
 from . import slam
+from . import servo
 from . import snapshot
 from . import web
 
@@ -42,6 +43,7 @@ def main():
     lidar.start()
     slam.start()
     drivetrain.start()
+    servo.start()
 
     mqtt.start()
     web.start()  # blocks

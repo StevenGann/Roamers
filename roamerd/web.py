@@ -10,6 +10,7 @@ from . import depth
 from . import lidar
 from . import panorama
 from . import slam
+from . import servo
 from . import snapshot as snap
 
 log = logging.getLogger("roamerd.web")
@@ -69,6 +70,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_bytes(slam.get_map(), "image/png")
         if self.path == "/pose":
             return self._send_json({"pose": slam.get_pose().tolist()})
+        if self.path.startswith("/servo"):
+            return self._send_json(servo.get_state())
         return self._send_json({"error": "not found"}, 404)
 
     def do_POST(self):
@@ -85,6 +88,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(core.renew_control(body.get("agent", "guppy")))
         if self.path == "/control/override":
             return self._send_json(core.override_control(body.get("agent", "sydney")))
+        if self.path.startswith("/servo"):
+            servo.look(body.get("pan_deg", 90), body.get("tilt_deg", 90))
+            return self._send_json(servo.get_state())
         return self._send_json({"error": "not found"}, 404)
 
     def _serve_file(self, path, ctype):

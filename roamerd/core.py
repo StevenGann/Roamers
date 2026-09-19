@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from . import drivetrain
+from . import servo
 
 # --- config ---
 DEVICE_ID = "r1"
@@ -100,6 +101,9 @@ def telemetry():
     t["imu"]["picked_up"] = d["picked_up"]
     t["drivetrain"] = {"connected": d["connected"], "vel_l_cm_s": d["vel_l"],
                        "vel_r_cm_s": d["vel_r"], "enc_l": d["enc_l"], "enc_r": d["enc_r"]}
+    s = servo.get_state()
+    t["servos"]["pan_deg"] = s["pan_deg"]
+    t["servos"]["tilt_deg"] = s["tilt_deg"]
     return t
 
 
@@ -178,8 +182,13 @@ def handle_command(cmd):
     if t == "stop":
         drivetrain.stop()
         return {"status": "ok"}
-    if t in ("drive_arc", "look_at", "grab", "release", "scan"):
-        return {"status": "ok", "note": "not yet implemented (arc/servos pending hardware)"}
+    if t == "look_at":
+        pan_deg = cmd.get("pan_deg", 90)
+        tilt_deg = cmd.get("tilt_deg", 90)
+        servo.look(pan_deg, tilt_deg)
+        return {"status": "ok", "pan_deg": pan_deg, "tilt_deg": tilt_deg}
+    if t in ("drive_arc", "grab", "release", "scan"):
+        return {"status": "ok", "note": "not yet implemented"}
     if t == "snapshot":
         return {"status": "ok", "url": f"http://{NAME}.local:{WEB_PORT}/snapshot"}
     return {"status": "error", "error": "unknown command type: " + str(t)}
