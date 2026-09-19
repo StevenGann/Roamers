@@ -89,7 +89,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/control/override":
             return self._send_json(core.override_control(body.get("agent", "sydney")))
         if self.path.startswith("/servo"):
-            servo.look(body.get("pan_deg", 90), body.get("tilt_deg", 90))
+            if "sweep" in body:
+                servo.sweep(body["sweep"])
+            else:
+                servo.look(body.get("pan_deg", 90), body.get("tilt_deg", 90))
             return self._send_json(servo.get_state())
         return self._send_json({"error": "not found"}, 404)
 
